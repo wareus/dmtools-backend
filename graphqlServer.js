@@ -14,35 +14,75 @@ var schema = buildSchema(`
     characters:[Character]
   }
   
+  type Mutation 
+  {
+    addCharacter(id:Int, firstname:String, lastname:String, nickname:String, gender:String):Character
+  }
+  
   type Character
   {
     id:Int
     firstname:String
     lastname:String
     nickname:String
+    gender:String
     knows:[Relation]
+    events:[Event]
+    
   }
   type Relation
   {
     knows:Int
     known:Character
-    level:Int
+    type:String
   }
+  type Event
+  {
+    date:String
+    type:EventType
+  }
+  enum EventType
+  {
+    Birth
+    Death
+  }
+  
+  
   
 `);
 
 var root = {
-    character: async ({id}) => {
 
-        return await db.Character.findById(id, {include:[
-                {model:db.Relation, as:"knows", include:[{model:db.Character, as:"known"}]}
-            ]});
-    },
-    characters: async () => {
+        character: async ({id}) => {
 
-        return await db.Character.findAll();
-    },
+            let character = await db.Character.findById(id, {
+                include: [
+                    {model: db.Relation, as: "knows", include: [{model: db.Character, as: "known"}]},
+                    {model: db.Event, as: "events"}
+                ]
+            })
+
+            return character;
+        },
+        characters: async () => {
+
+            return await db.Character.findAll();
+        },
+
+
+        addCharacter: async (data)=>{
+            add(db.Character, data);
+        }
+
 };
+
+const add = async (tabel, data)=>{
+    if (!data.id)
+        return new tabel(data).save();
+    return await tabel.findById(data.id).then(tmp => {
+        return tmp.update(data);
+    });
+}
 
 var app = express();
 
